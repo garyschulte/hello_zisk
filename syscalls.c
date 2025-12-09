@@ -25,18 +25,24 @@ void *_sbrk(int incr) {
 }
 
 /* Write to file descriptor
- * For bare metal, fd 1 (stdout) and 2 (stderr) could output to UART or HTIF
- * This is a basic stub - you'll need to implement actual hardware output
+ * For Zisk VM, write to memory-mapped UART at 0xa0000200
+ * Each byte write outputs one character to stdout
  */
 int _write(int file, char *ptr, int len) {
-    /* TODO: Implement actual output mechanism
-     * Options:
-     * 1. UART output for physical hardware
-     * 2. HTIF for simulators like Spike
-     * 3. Custom syscall for ZKVM
-     */
+    // Zisk VM UART address for console output
+    volatile char *uart = (volatile char *)0xa0000200;
 
-    // For now, just pretend we wrote everything
+    // Only handle stdout (1) and stderr (2)
+    if (file != 1 && file != 2) {
+        errno = EBADF;
+        return -1;
+    }
+
+    // Write each byte to the UART
+    for (int i = 0; i < len; i++) {
+        *uart = ptr[i];
+    }
+
     return len;
 }
 

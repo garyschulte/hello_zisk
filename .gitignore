@@ -1,0 +1,10 @@
+# Build artifacts
+*.o
+*.elf
+*.bin
+*.disasm
+
+# Newlib installation and build
+newlib-rv64im/
+newlib-build/
+*.tar.gz
