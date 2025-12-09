@@ -24,7 +24,11 @@ bss_done:
     # Call global destructors
     call __libc_fini_array
 
-    # Exit loop (hang)
+    # Exit via zisk VM syscall
+    li a7, 93           # Exit syscall number
+    ecall               # Invoke syscall
+
+    # Exit loop (should never reach here)
 exit_loop:
     wfi
     j exit_loop

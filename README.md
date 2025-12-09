@@ -1,144 +1,137 @@
-# Bare Metal RISC-V 64-bit Hello World
+# Bare Metal RISC-V C++ Hello World for Zisk VM
 
-This project implements a C++ hello world application for bare metal RISC-V 64-bit (rv64im) targets, using newlib for C standard library support.
+A minimal C++ application for bare metal RISC-V (rv64im) that runs on the Zisk zero-knowledge virtual machine.
 
-## Architecture
+## Features
 
-- **Target**: rv64im (RISC-V 64-bit with Integer and Multiply extensions)
-- **ABI**: lp64 (64-bit long and pointers, no floating point)
-- **C Library**: newlib (with custom syscall stubs)
-
-## Project Structure
-
-- `start.S` - Startup assembly code that:
-  - Sets up the stack pointer
-  - Zeros the .bss section
-  - Calls C++ global constructors
-  - Calls main()
-  - Calls C++ global destructors
-
-- `syscalls.c` - Newlib syscall stubs including:
-  - `_sbrk` - Heap memory allocation
-  - `_write` - Output (needs hardware-specific implementation)
-  - `_read`, `_close`, `_fstat`, etc. - File operations stubs
-  - `_exit` - Program termination
-
-- `main.cpp` - C++ hello world application demonstrating:
-  - C-style printf
-  - C++ iostream
-  - Global constructors/destructors
-
-- `link.ld` - Linker script defining:
-  - Memory layout (128MB RAM @ 0x80000000)
-  - Section placement
-  - Stack location (64KB stack)
-  - C++ init/fini array sections
+- Bare metal C++ with newlib support
+- C++ global constructors/destructors
+- Custom linker script for Zisk VM memory layout
+- Clean exit via syscall (no error messages)
+- Integer-only (no floating-point)
 
 ## Prerequisites
 
-You need the RISC-V GNU toolchain installed. Install it using:
-
-### macOS (using Homebrew)
-```bash
-brew tap riscv/riscv
-brew install riscv-tools
-```
-
-### Linux (Ubuntu/Debian)
-```bash
-sudo apt-get install gcc-riscv64-unknown-elf
-```
-
-### Building from source
-```bash
-git clone https://github.com/riscv/riscv-gnu-toolchain
-cd riscv-gnu-toolchain
-./configure --prefix=/opt/riscv --with-arch=rv64im --with-abi=lp64
-make
-```
+- RISC-V GNU toolchain (`riscv64-unknown-elf-gcc`)
+  - On macOS with Homebrew: `brew install riscv-gnu-toolchain`
+- curl or wget (for downloading newlib)
+- Make
 
 ## Building
 
-Simply run:
+### First Time Setup
+
+1. Build and install newlib:
+```bash
+./build-newlib.sh
+```
+
+This will:
+- Download newlib 4.4.0.20231231
+- Configure it for rv64im with medany code model
+- Build with newlib-nano optimizations
+- Install to `newlib-rv64im/`
+
+### Build the Application
+
 ```bash
 make
 ```
 
-This will produce:
-- `hello_world.elf` - ELF executable
-- `hello_world.bin` - Raw binary
+This produces:
+- `hello_world.elf` - ELF executable for Zisk VM
+- `hello_world.bin` - Raw binary image
 
-## Additional Make Targets
+### Other Make Targets
 
-- `make disasm` - Generate disassembly listing
-- `make size` - Show section sizes
 - `make clean` - Remove build artifacts
-
-## Customizing Output
-
-The `_write` syscall in `syscalls.c:22` is currently a stub. You need to implement actual output based on your target:
-
-### For Spike Simulator (HTIF)
-```c
-// Use HTIF tohost register
-#define HTIF_TOHOST 0x40008000
-volatile uint64_t *tohost = (uint64_t *)HTIF_TOHOST;
-
-int _write(int file, char *ptr, int len) {
-    for (int i = 0; i < len; i++) {
-        *tohost = 0x0101000000000000ULL | ptr[i];
-    }
-    return len;
-}
-```
-
-### For UART Output
-```c
-#define UART_BASE 0x10000000
-volatile uint8_t *uart = (uint8_t *)UART_BASE;
-
-int _write(int file, char *ptr, int len) {
-    for (int i = 0; i < len; i++) {
-        uart[0] = ptr[i];
-    }
-    return len;
-}
-```
-
-### For ZKVM
-Implement using your ZKVM's specific syscall mechanism.
+- `make disasm` - Generate disassembly listing
+- `make size` - Show detailed size information
 
 ## Running
 
-The execution method depends on your target:
-
-### Spike Simulator
+With ziskemu:
 ```bash
-spike --isa=rv64im hello_world.elf
+/path/to/ziskemu -e hello_world.elf
 ```
 
-### QEMU
-```bash
-qemu-system-riscv64 -machine virt -bios none -kernel hello_world.elf -nographic
-```
+The program should exit cleanly with no error messages.
 
-### Custom Hardware
-Flash `hello_world.bin` to your device according to its programming method.
-
-## Memory Map
+## Project Structure
 
 ```
-0x80000000 - Code (.text)
-           - Read-only data (.rodata)
-           - Initialized data (.data)
-           - Uninitialized data (.bss)
-           - Heap (grows upward from __heap_start)
-0x87FF0000 - Stack (64KB, grows downward from __stack_top)
+.
+├── build-newlib.sh   # Script to fetch and build newlib
+├── Makefile          # Build configuration
+├── link.ld           # Linker script for Zisk VM memory layout
+├── start.S           # Assembly startup code
+├── syscalls.c        # Newlib syscall stubs
+├── main.cpp          # C++ application code
+└── newlib-rv64im/    # Newlib installation (created by build-newlib.sh)
 ```
 
-## Notes
+## Architecture Details
 
-- The application uses `-fno-exceptions` and `-fno-rtti` to minimize code size
-- C++ iostreams require more code space than printf
-- Global constructors/destructors are fully supported
-- No atomic or floating-point operations (not in rv64im)
+- **Target**: riscv64-unknown-elf
+- **Architecture**: rv64im (64-bit RISC-V with Integer and Multiply extensions)
+- **ABI**: lp64
+- **Code Model**: medany (position-independent code for high memory addresses)
+- **Newlib**: nano variant (integer-only printf/scanf, optimized for embedded)
+
+
+# Zisk Specific Details
+
+## Memory Layout
+
+The linker script (`link.ld`) configures memory for the Zisk VM:
+
+- **ROM**: 0x80000000 - 0x90000000
+  - `.text` - Code
+  - `.rodata` - Read-only data
+  - Physical storage for initialized data
+
+- **RAM**: 0xa0020000 - 0xc0000000
+  - `.data` - Initialized data (copied from ROM at startup)
+  - `.bss` - Uninitialized data
+  - Heap
+  - Stack (1MB)
+
+### Exit Mechanism
+
+The program uses Zisk VM syscall 93 to exit cleanly:
+```asm
+li a7, 93    # Exit syscall number
+ecall        # Invoke syscall
+```
+
+### Data Section Layout
+
+The linker script uses `>ram AT>rom` for the `.data` section, which tells the linker:
+- Store initialized data in ROM in the ELF file (PhysAddr)
+- Code expects to access it in RAM (VirtAddr)
+- The Zisk VM loader copies data from ROM to RAM at startup
+
+This is critical for C++ global constructors to work correctly.
+
+## Customization
+
+### Modifying the Application
+
+Edit `main.cpp` to change the application behavior. The current example demonstrates:
+- C++ classes with constructors/destructors
+- Global object initialization
+- Newlib printf support (note: output not visible without I/O implementation)
+
+### Linker Script
+
+The linker script (`link.ld`) is based on the Polygon Hermez Rust Zisk implementation. Modify it if you need different memory regions or section layouts.
+
+### Syscalls
+
+The `syscalls.c` file provides minimal stubs for newlib. The `_write()` function currently returns success without actually outputting anything. To see printf output, you would need to implement the actual output mechanism for Zisk VM.
+
+## References
+
+- [Newlib Documentation](https://sourceware.org/newlib/)
+- [RISC-V ISA Specification](https://riscv.org/technical/specifications/)
+- [Zisk VM Repository](https://github.com/0xPolygonHermez/zisk)

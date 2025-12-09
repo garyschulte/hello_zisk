@@ -30,7 +30,7 @@ NEWLIB_INC = $(NEWLIB_DIR)/riscv64-unknown-elf/include
 NEWLIB_LIB = $(NEWLIB_DIR)/riscv64-unknown-elf/lib
 
 # Flags
-ARCH_FLAGS = -march=$(ARCH) -mabi=$(ABI) -mcmodel=medlow
+ARCH_FLAGS = -march=$(ARCH) -mabi=$(ABI) -mcmodel=medany
 CFLAGS = $(ARCH_FLAGS) -O2 -g -Wall -Wextra -nostdlib -ffreestanding -isystem $(NEWLIB_INC)
 CXXFLAGS = $(CFLAGS) -fno-exceptions -fno-rtti -fno-use-cxa-atexit
 ASFLAGS = $(ARCH_FLAGS)
