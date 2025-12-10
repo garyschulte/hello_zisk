@@ -13,13 +13,15 @@ A minimal C++ application for bare metal RISC-V (rv64im) that runs on the Zisk z
 ## Prerequisites
 
 - RISC-V GNU toolchain (`riscv64-unknown-elf-gcc`)
-  - On macOS with Homebrew: `brew tap riscv-software-src/riscv; brew install riscv-gnu-toolchain`
+  - On macOS with Homebrew: `brew tap riscv/riscv; brew install riscv/riscv/riscv-gnu-toolchain`
 - Rust toolchain (for building Zisk VM)
   - Install from: https://rustup.rs/
   - Or run: `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
 - curl or wget (for downloading newlib)
 - Git
 - Make
+- Texinfo
+  - on macOS with Homebrew: `brew install texinfo`
 
 ## Building
 

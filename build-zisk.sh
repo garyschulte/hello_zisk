@@ -36,7 +36,7 @@ if [ -d "${ZISK_DIR}" ]; then
     git pull origin "${ZISK_BRANCH}"
 else
     echo "Cloning zisk repository..."
-    git clone "${ZISK_REPO}" "${ZISK_DIR}"
+    git clone --depth=1 "${ZISK_REPO}" "${ZISK_DIR}"
     cd "${ZISK_DIR}"
     git checkout "${ZISK_BRANCH}"
 fi
