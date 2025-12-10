@@ -48,7 +48,7 @@ OBJECTS = $(SOURCES_ASM:.S=.o) $(SOURCES_C:.c=.o) $(SOURCES_CXX:.cpp=.o)
 # Output
 TARGET = hello_world
 
-.PHONY: all clean disasm size
+.PHONY: all clean disasm size run
 
 all: $(TARGET).elf $(TARGET).bin
 	@echo "Build complete!"
@@ -78,3 +78,6 @@ size: $(TARGET).elf
 
 clean:
 	rm -f $(OBJECTS) $(TARGET).elf $(TARGET).bin $(TARGET).disasm
+
+run: $(TARGET).elf
+	./zisk/target/release/ziskemu -e $(TARGET).elf

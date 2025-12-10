@@ -14,7 +14,11 @@ A minimal C++ application for bare metal RISC-V (rv64im) that runs on the Zisk z
 
 - RISC-V GNU toolchain (`riscv64-unknown-elf-gcc`)
   - On macOS with Homebrew: `brew install riscv-gnu-toolchain`
+- Rust toolchain (for building Zisk VM)
+  - Install from: https://rustup.rs/
+  - Or run: `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
 - curl or wget (for downloading newlib)
+- Git
 - Make
 
 ## Building
@@ -32,6 +36,18 @@ This will:
 - Build with newlib-nano optimizations
 - Install to `newlib-rv64im/`
 
+2. Build Zisk VM emulator:
+```bash
+./build-zisk.sh
+```
+
+This will:
+- Clone the Zisk VM repository from GitHub
+- Build only the emulator (without proving support to avoid CUDA/libgmp dependencies)
+- Install to `zisk/target/release/ziskemu`
+
+**Note**: Building without proving support keeps dependencies simple and build times fast.
+
 ### Build the Application
 
 ```bash
@@ -47,27 +63,39 @@ This produces:
 - `make clean` - Remove build artifacts
 - `make disasm` - Generate disassembly listing
 - `make size` - Show detailed size information
+- `make run` - Build and run the program with ziskemu
 
 ## Running
 
-With ziskemu:
+With the locally built ziskemu:
 ```bash
-/path/to/ziskemu -e hello_world.elf
+./zisk/target/release/ziskemu -e hello_world.elf
 ```
 
-The program should exit cleanly with no error messages.
+The program will output:
+```
+C++ Constructor called
+Hello, World from bare metal RISC-V!
+This is a C++ application with newlib support
+Hello from C++ class!
+C++ Destructor called
+```
+
+The program exits cleanly with no error messages.
 
 ## Project Structure
 
 ```
 .
 ├── build-newlib.sh   # Script to fetch and build newlib
+├── build-zisk.sh     # Script to fetch and build Zisk VM emulator
 ├── Makefile          # Build configuration
 ├── link.ld           # Linker script for Zisk VM memory layout
 ├── start.S           # Assembly startup code
-├── syscalls.c        # Newlib syscall stubs
+├── syscalls.c        # Newlib syscall stubs with Zisk UART output
 ├── main.cpp          # C++ application code
-└── newlib-rv64im/    # Newlib installation (created by build-newlib.sh)
+├── newlib-rv64im/    # Newlib installation (created by build-newlib.sh)
+└── zisk/             # Zisk VM repository (created by build-zisk.sh)
 ```
 
 ## Architecture Details
@@ -126,9 +154,31 @@ Edit `main.cpp` to change the application behavior. The current example demonstr
 
 The linker script (`link.ld`) is based on the Polygon Hermez Rust Zisk implementation. Modify it if you need different memory regions or section layouts.
 
-### Syscalls
+### Console Output
 
-The `syscalls.c` file provides minimal stubs for newlib. The `_write()` function currently returns success without actually outputting anything. To see printf output, you would need to implement the actual output mechanism for Zisk VM.
+The `syscalls.c` file implements console output using Zisk VM's memory-mapped UART at address `0xa0000200`. The `_write()` function writes each character to this address, which the Zisk VM emulator captures and displays on stdout. This allows printf and other newlib output functions to work correctly.
+
+### Syscall Implementation Status
+
+The `syscalls.c` file provides newlib syscall stubs required for linking. However, most are **minimal stub implementations** suitable only for this hello world example:
+
+**Fully Implemented:**
+- `_sbrk()` - Heap allocation (basic implementation)
+- `_write()` - Console output via Zisk VM UART at 0xa0000200
+
+**Stubbed (Not Implemented):**
+- `_close()` - Always returns -1 (not supported)
+- `_fstat()` - Returns character device mode, no actual file stats
+- `_isatty()` - Always returns 1 (assumes all files are terminals)
+- `_lseek()` - Always returns 0 (no seek support)
+- `_read()` - Always returns 0 (no input support)
+- `_exit()` - Infinite WFI loop (actual exit handled by syscall 93 in start.S)
+- `_kill()` - Always fails with EINVAL
+- `_getpid()` - Always returns 1
+- `_fputwc_r()` - Wide character stub, always returns WEOF
+
+**For Production Applications:**
+You would need to implement these syscalls properly based on your application's requirements. The Zisk VM provides additional capabilities through ecall syscalls including Ethereum precompiles (SHA256, SHA3, RIPEMD160, Blake2f, elliptic curve operations, etc.). See the header comment in `syscalls.c` for details.
 
 ## References
 

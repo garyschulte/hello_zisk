@@ -7,4 +7,6 @@
 # Newlib installation and build
 newlib-rv64im/
 newlib-build/
+# zisk install
+zisk/
 *.tar.gz
